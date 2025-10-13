@@ -1,4 +1,4 @@
-package your.package.exception;
+package org.example.error;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
