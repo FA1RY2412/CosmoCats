@@ -37,6 +37,7 @@ public class ProductController {
 
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> delete(@PathVariable UUID id) {
-    return service.delete(id) ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+    service.deleteIfExists(id);        // no-op, якщо запису нема
+    return ResponseEntity.noContent().build(); // 204
   }
 }
