@@ -13,6 +13,7 @@ public class ProductService {
   private final Map<UUID, ProductDto> storage = new ConcurrentHashMap<>();
 
   public ProductService() {
+    
     create(new ProductDto(null, "Galaxy Yarn", "Anti-gravity yarn ball", new BigDecimal("19.99"), "toys"));
     create(new ProductDto(null, "Comet Milk", "Fresh from the Oort cloud", new BigDecimal("7.49"), "food"));
   }
@@ -39,10 +40,12 @@ public class ProductService {
     return Optional.of(updated);
   }
 
+  
   public boolean delete(UUID id) {
     return storage.remove(id) != null;
   }
 
+  
   public void deleteIfExists(UUID id) {
     storage.remove(id);
   }
