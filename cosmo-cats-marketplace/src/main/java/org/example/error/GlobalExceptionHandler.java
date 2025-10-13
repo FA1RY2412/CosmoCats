@@ -1,52 +1,51 @@
-package org.example.error;
+package your.package.exception;
 
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.ConstraintViolationException;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
-import java.time.OffsetDateTime;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-  private Map<String, Object> body(HttpStatus status, String error, String message, String path) {
-    Map<String, Object> map = new HashMap<>();
-    map.put("timestamp", OffsetDateTime.now());
-    map.put("status", status.value());
-    map.put("error", error);
-    map.put("message", message);
-    map.put("path", path);
-    return map;
+  @ExceptionHandler(EntityNotFoundException.class)
+  public ResponseEntity<ProblemDetail> handleNotFound(EntityNotFoundException ex, HttpServletRequest req) {
+    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+    pd.setTitle("Resource not found");
+    pd.setDetail(ex.getMessage());
+    pd.setProperty("path", req.getRequestURI());
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(pd);
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
-  public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex,
-                                                              HttpServletRequest req) {
-    String details = ex.getBindingResult().getFieldErrors().stream()
-        .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
-        .collect(Collectors.joining("; "));
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .body(body(HttpStatus.BAD_REQUEST, "Bad Request", details, req.getRequestURI()));
-  }
-
-  @ExceptionHandler(ConstraintViolationException.class)
-  public ResponseEntity<Map<String, Object>> handleConstraint(ConstraintViolationException ex,
-                                                              HttpServletRequest req) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .body(body(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage(), req.getRequestURI()));
+  public ResponseEntity<ProblemDetail> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest req) {
+    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+    pd.setTitle("Validation failed");
+    pd.setDetail("One or more validation errors occurred");
+    Map<String, String> errors = ex.getBindingResult().getFieldErrors().stream()
+        .collect(Collectors.toMap(FieldError::getField, DefaultMessageSourceResolvable::getDefaultMessage,
+            (a,b)->a, LinkedHashMap::new));
+    pd.setProperty("errors", errors);
+    pd.setProperty("path", req.getRequestURI());
+    return ResponseEntity.badRequest().body(pd);
   }
 
   @ExceptionHandler(Exception.class)
-  public ResponseEntity<Map<String, Object>> handleOther(Exception ex, HttpServletRequest req) {
-    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .body(body(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", ex.getMessage(), req.getRequestURI()));
+  public ResponseEntity<ProblemDetail> handleGeneric(Exception ex, HttpServletRequest req) {
+    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+    pd.setTitle("Internal error");
+    pd.setDetail(ex.getMessage());
+    pd.setProperty("path", req.getRequestURI());
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(pd);
   }
 }
